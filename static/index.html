@@ -412,7 +412,7 @@
                 const res = await fetch(`${API}/api/online/${encodeURIComponent(anio)}/${encodeURIComponent(rbd)}`);
                 const data = await res.json();
                 if (data.total === 0) {
-                    body.innerHTML = '<div class="empty">No hay actas registradas para este establecimiento.</div>';
+                    body.innerHTML = '<div class="empty">No hay actas digitalizadas para este establecimiento.</div>';
                     return;
                 }
 
