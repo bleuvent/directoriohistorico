@@ -99,7 +99,7 @@
         .modal-body { padding: 25px; }
         .actas-list { display: flex; flex-direction: column; gap: 10px; }
         .acta-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: var(--bg); border-radius: 8px; flex-wrap: wrap; gap: 8px; }
-        .acta-item .numero { font-weight: 700; color: var(--primary); font-size: 1.1rem; }
+        .acta-item .codigo { font-weight: 700; color: var(--primary); font-size: 1.1rem; font-family: monospace; }
         .acta-item .detalle { color: var(--text-muted); font-size: 0.85rem; }
         .acta-item a { color: var(--primary); text-decoration: none; font-weight: 500; }
         .acta-item a:hover { text-decoration: underline; }
@@ -307,15 +307,21 @@
                 }
 
                 const items = data.resultados.map(r => {
-                    // Prioridad: url_sharepoint > enlace > acta
-                    const url = r.url_sharepoint || r.enlace;
-                    const texto = r.enlace || r.acta || 'Sin número';
-                    const detalle = `${r.curso || ''} ${r.letra || ''} · ${r.tipo_acta || 'Acta'}`;
+                    // CÓDIGO INDEXADOR = r.enlace (ahora contiene el código, ej: 0188819)
+                    const codigo = r.enlace || 'Sin código';
+                    const curso = r.curso || '';
+                    const letra = r.letra || '';
+                    const especialidad = r.tipo_acta || '';
+                    const detalle = `${curso} ${letra} · ${especialidad}`.trim();
 
-                    if (url && url.toString().startsWith('http')) {
+                    // URL del acta individual (solo si es URL válida de SharePoint)
+                    const url = r.url_sharepoint;
+                    const tieneUrl = url && url.toString().startsWith('http');
+
+                    if (tieneUrl) {
                         return `<div class="acta-item">
                             <div>
-                                <span class="numero">${texto}</span>
+                                <span class="codigo">${codigo}</span>
                                 <span class="detalle"> · ${detalle}</span>
                             </div>
                             <a href="${url}" target="_blank" rel="noopener noreferrer">Abrir en SharePoint ↗</a>
@@ -323,7 +329,7 @@
                     } else {
                         return `<div class="acta-item">
                             <div>
-                                <span class="numero">${texto}</span>
+                                <span class="codigo">${codigo}</span>
                                 <span class="detalle"> · ${detalle}</span>
                             </div>
                             <span class="no-link">Sin enlace digital</span>
