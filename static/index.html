@@ -64,11 +64,11 @@
         .search-form.active { display: block; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9rem; }
-        input {
+        input, select {
             width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px;
-            font-size: 1rem; transition: border-color 0.2s;
+            font-size: 1rem; transition: border-color 0.2s; background: white;
         }
-        input:focus { outline: none; border-color: var(--primary); }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
         .btn {
             background: var(--primary); color: white; border: none; padding: 12px 28px;
             border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;
@@ -78,9 +78,14 @@
         .btn-small { padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
         .btn-online { background: #dbeafe; color: var(--primary); }
         .btn-online:hover { background: #bfdbfe; }
+        .btn-secondary { background: var(--text-muted); color: white; }
+        .btn-secondary:hover { background: #475569; }
         .results { margin-top: 25px; }
-        .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         .results-count { color: var(--text-muted); font-size: 0.9rem; }
+        .active-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+        .filter-tag { background: #eff6ff; color: var(--primary); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 500; }
+        .filter-tag button { background: none; border: none; color: var(--primary); cursor: pointer; margin-left: 4px; font-weight: 700; }
         table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
         th { background: #f1f5f9; font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
@@ -104,10 +109,12 @@
         .acta-item a { color: var(--primary); text-decoration: none; font-weight: 500; }
         .acta-item a:hover { text-decoration: underline; }
         .no-link { color: var(--text-muted); font-size: 0.85rem; }
+        .filters-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
         @media (max-width: 768px) {
             table { font-size: 0.8rem; }
             th, td { padding: 8px; }
             .acta-item { flex-direction: column; align-items: flex-start; }
+            .filters-row { grid-template-columns: 1fr; }
         }
     </style>
 <base target="_blank">
@@ -169,7 +176,33 @@
                     <label>Nombre del establecimiento</label>
                     <input type="text" id="nombre" placeholder="Ej: Liceo..." required>
                 </div>
-                <button type="submit" class="btn">Buscar</button>
+
+                <!-- Filtros -->
+                <div class="filters-row">
+                    <div class="form-group">
+                        <label>🌎 Región</label>
+                        <select id="filtro-region" onchange="onFilterChange()">
+                            <option value="">Todas las regiones</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>🏘️ Comuna</label>
+                        <select id="filtro-comuna" onchange="onFilterChange()">
+                            <option value="">Todas las comunas</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>📅 Año</label>
+                        <select id="filtro-anio" onchange="onFilterChange()">
+                            <option value="">Todos los años</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn">Buscar</button>
+                    <button type="button" class="btn btn-secondary" onclick="limpiarFiltros()">Limpiar filtros</button>
+                </div>
             </form>
 
             <div class="results" id="results"></div>
@@ -191,7 +224,10 @@
 
     <script>
         const API = window.location.origin;
+        let filtrosActivos = { region: '', comuna: '', anio: '' };
+        let ultimaBusqueda = { tipo: '', valor: '' };
 
+        // Cargar progreso al iniciar
         async function cargarProgreso() {
             try {
                 const res = await fetch(`${API}/api/progreso`);
@@ -212,11 +248,76 @@
         }
         cargarProgreso();
 
+        // Cargar valores de filtros al iniciar
+        async function cargarFiltros() {
+            try {
+                const res = await fetch(`${API}/api/filtros/valores`);
+                const data = await res.json();
+
+                const selRegion = document.getElementById('filtro-region');
+                const selComuna = document.getElementById('filtro-comuna');
+                const selAnio = document.getElementById('filtro-anio');
+
+                data.regiones.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r;
+                    opt.textContent = r;
+                    selRegion.appendChild(opt);
+                });
+
+                data.comunas.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c;
+                    opt.textContent = c;
+                    selComuna.appendChild(opt);
+                });
+
+                data.anios.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a;
+                    opt.textContent = a;
+                    selAnio.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('Error cargando filtros:', e);
+            }
+        }
+        cargarFiltros();
+
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.search-form').forEach(f => f.classList.remove('active'));
             event.target.classList.add('active');
             document.getElementById('form-' + tab).classList.add('active');
+        }
+
+        function onFilterChange() {
+            filtrosActivos.region = document.getElementById('filtro-region').value;
+            filtrosActivos.comuna = document.getElementById('filtro-comuna').value;
+            filtrosActivos.anio = document.getElementById('filtro-anio').value;
+        }
+
+        function limpiarFiltros() {
+            document.getElementById('filtro-region').value = '';
+            document.getElementById('filtro-comuna').value = '';
+            document.getElementById('filtro-anio').value = '';
+            filtrosActivos = { region: '', comuna: '', anio: '' };
+            // Si hay una búsqueda previa por nombre, re-ejecutarla
+            if (ultimaBusqueda.tipo === 'nombre' && ultimaBusqueda.valor) {
+                document.getElementById('nombre').value = ultimaBusqueda.valor;
+                buscarNombre(new Event('submit'));
+            }
+        }
+
+        function renderActiveFilters() {
+            const tags = [];
+            if (filtrosActivos.region) tags.push(`Región: ${filtrosActivos.region}`);
+            if (filtrosActivos.comuna) tags.push(`Comuna: ${filtrosActivos.comuna}`);
+            if (filtrosActivos.anio) tags.push(`Año: ${filtrosActivos.anio}`);
+
+            if (tags.length === 0) return '';
+
+            return `<div class="active-filters">${tags.map(t => `<span class="filter-tag">${t}</span>`).join('')}</div>`;
         }
 
         function renderTabla(resultados, total) {
@@ -241,6 +342,7 @@
             return `
                 <div class="results-header">
                     <span class="results-count">${total.toLocaleString()} resultado${total !== 1 ? 's' : ''}</span>
+                    ${renderActiveFilters()}
                 </div>
                 <div style="overflow-x: auto;">
                     <table>
@@ -279,13 +381,21 @@
         }
 
         async function buscarNombre(e) {
-            e.preventDefault();
+            if (e.preventDefault) e.preventDefault();
             const nombre = document.getElementById('nombre').value;
             const container = document.getElementById('results');
             container.innerHTML = '<div class="loading">Buscando...</div>';
 
+            ultimaBusqueda = { tipo: 'nombre', valor: nombre };
+
+            const params = new URLSearchParams();
+            params.append('nombre', nombre);
+            if (filtrosActivos.region) params.append('region', filtrosActivos.region);
+            if (filtrosActivos.comuna) params.append('comuna', filtrosActivos.comuna);
+            if (filtrosActivos.anio) params.append('anio', filtrosActivos.anio);
+
             try {
-                const res = await fetch(`${API}/api/buscar/nombre?nombre=${encodeURIComponent(nombre)}`);
+                const res = await fetch(`${API}/api/buscar/nombre?${params.toString()}`);
                 const data = await res.json();
                 container.innerHTML = renderTabla(data.resultados, data.total);
             } catch (err) {
@@ -302,19 +412,17 @@
                 const res = await fetch(`${API}/api/online/${encodeURIComponent(anio)}/${encodeURIComponent(rbd)}`);
                 const data = await res.json();
                 if (data.total === 0) {
-                    body.innerHTML = '<div class="empty">No hay actas digitalizadas para este establecimiento.</div>';
+                    body.innerHTML = '<div class="empty">No hay actas registradas para este establecimiento.</div>';
                     return;
                 }
 
                 const items = data.resultados.map(r => {
-                    // CÓDIGO INDEXADOR = r.enlace (ahora contiene el código, ej: 0188819)
                     const codigo = r.enlace || 'Sin código';
                     const curso = r.curso || '';
                     const letra = r.letra || '';
                     const especialidad = r.tipo_acta || '';
                     const detalle = `${curso} ${letra} · ${especialidad}`.trim();
 
-                    // URL del acta individual (solo si es URL válida de SharePoint)
                     const url = r.url_sharepoint;
                     const tieneUrl = url && url.toString().startsWith('http');
 
