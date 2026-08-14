@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Búsqueda de Establecimientos</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f6fa;
+            color: #2c3e50;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            color: #1a5276;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+        .progress-section {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .progress-box {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+            min-width: 220px;
+        }
+        .progress-box h3 { font-size: 0.9rem; color: #5d6d7e; margin-bottom: 8px; }
+        .progress-bar-bg {
+            background: #e8e8e8;
+            border-radius: 20px;
+            height: 22px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #27ae60, #2ecc71);
+            border-radius: 20px;
+            transition: width 0.8s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+        .progress-bar-fill.rm {
+            background: linear-gradient(90deg, #2980b9, #3498db);
+        }
+        .search-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .search-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 900px) {
+            .search-grid { grid-template-columns: 1fr; }
+        }
+        .search-box h2 {
+            font-size: 1.1rem;
+            color: #1a5276;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #3498db;
+        }
+        .form-group {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .form-group label {
+            font-weight: 600;
+            min-width: 80px;
+            color: #34495e;
+        }
+        input[type="text"], input[type="number"] {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.15);
+        }
+        button {
+            background: #2980b9;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1a5276; }
+        button.secondary {
+            background: #7f8c8d;
+        }
+        button.secondary:hover { background: #5d6d7e; }
+        .results-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .results-header h2 { color: #1a5276; font-size: 1.1rem; }
+        .count-badge {
+            background: #ecf0f1;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            color: #5d6d7e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+        th {
+            background: #1a5276;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        tr:hover { background: #f8f9fa; }
+        tr.selected { background: #d5f5e3 !important; }
+        .link-btn {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+        }
+        .link-btn.online {
+            background: #27ae60;
+            color: white;
+        }
+        .link-btn.online:hover { background: #1e8449; }
+        .link-btn.ubicacion {
+            background: #8e44ad;
+            color: white;
+        }
+        .link-btn.ubicacion:hover { background: #6c3483; }
+        .link-btn.disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 12px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            padding: 18px 24px;
+            background: #1a5276;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { font-size: 1.2rem; }
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.2); }
+        .modal-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .ubicacion-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .info-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #8e44ad;
+        }
+        .info-card label {
+            display: block;
+            font-size: 0.8rem;
+            color: #5d6d7e;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-card span {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 4px;
+            margin-top: 15px;
+        }
+        .map-cell {
+            aspect-ratio: 1;
+            background: #ecf0f1;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #5d6d7e;
+        }
+        .map-cell.highlight {
+            background: #e74c3c;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #5d6d7e;
+        }
+        .error {
+            background: #fadbd8;
+            color: #c0392b;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #5d6d7e;
+        }
+        .table-container {
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge.online { background: #d5f5e3; color: #27ae60; }
+        .badge.offline { background: #fadbd8; color: #c0392b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 SISTEMA DE BÚSQUEDA DE ESTABLECIMIENTOS</h1>
+
+        <div class="progress-section">
+            <div class="progress-box">
+                <h3>📊 Progreso Nacional</h3>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="prog-nacional" style="width: 0%">0%</div>
+                </div>
+                <p style="margin-top:8px; font-size:0.85rem; color:#5d6d7e">
+                    <span id="count-nacional">0</span> / <span id="total-nacional">0</span> establecimientos
+                </p>
+            </div>
+            <div class="progress-box">
+                <h3>🏙️ Progreso RM</h3>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill rm" id="prog-rm" style="width: 0%">0%</div>
+                </div>
+                <p style="margin-top:8px; font-size:0.85rem; color:#5d6d7e">
+                    <span id="count-rm">0</span> / <span id="total-rm">0</span> establecimientos
+                </p>
+            </div>
+        </div>
+
+        <div class="search-section">
+            <div class="search-grid">
+                <div class="search-box">
+                    <h2>🔍 BUSCADOR ESPECÍFICO (AÑO + RBD)</h2>
+                    <div class="form-group">
+                        <label>Año:</label>
+                        <input type="number" id="bus-anio" placeholder="Ej: 1985" min="1900" max="2100">
+                    </div>
+                    <div class="form-group">
+                        <label>RBD:</label>
+                        <input type="text" id="bus-rbd" placeholder="Ej: 9502">
+                    </div>
+                    <div style="text-align: right;">
+                        <button onclick="buscarAnioRbd()">Buscar</button>
+                        <button class="secondary" onclick="limpiarBusqueda()">Limpiar</button>
+                    </div>
+                </div>
+
+                <div class="search-box">
+                    <h2>🔎 BUSCADOR POR NOMBRE (Máx. 1000 resultados)</h2>
+                    <div class="form-group">
+                        <label>Nombre:</label>
+                        <input type="text" id="bus-nombre" placeholder="Ej: gonzalez videla">
+                    </div>
+                    <div style="text-align: right;">
+                        <button onclick="buscarNombre()">Buscar</button>
+                        <button class="secondary" onclick="limpiarBusqueda()">Limpiar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section" id="results-section" style="display:none;">
+            <div class="results-header">
+                <h2 id="results-title">Resultados</h2>
+                <span class="count-badge" id="results-count">0 resultados</span>
+            </div>
+            <div id="results-error"></div>
+            <div class="table-container">
+                <table id="results-table">
+                    <thead>
+                        <tr>
+                            <th>AÑO</th>
+                            <th>RBD</th>
+                            <th>DGV</th>
+                            <th>NOMBRE ESTABLECIMIENTO</th>
+                            <th>NOMBRE ANTIGUO</th>
+                            <th>LET</th>
+                            <th>NUM</th>
+                            <th>REG</th>
+                            <th>COMUNA</th>
+                            <th>LOCALIDAD</th>
+                            <th>UBICACIÓN</th>
+                            <th>TOMO</th>
+                            <th>MICROFICHA</th>
+                            <th>OBSERVACIÓN</th>
+                            <th>DIRECCIÓN</th>
+                            <th>DIRECTOR</th>
+                            <th>EST_DIGIT</th>
+                            <th>ACCIONES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ubicación -->
+    <div class="modal-overlay" id="modal-ubicacion">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📍 Detalle de Ubicación</h3>
+                <button class="modal-close" onclick="cerrarModal('modal-ubicacion')">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-ubicacion-body">
+                <div class="loading">Cargando...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Online -->
+    <div class="modal-overlay" id="modal-online">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>💻 Actas Digitalizadas (ONLINE)</h3>
+                <button class="modal-close" onclick="cerrarModal('modal-online')">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-online-body">
+                <div class="loading">Cargando...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let resultadosActuales = [];
+
+        // Cargar progreso al iniciar
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarProgreso();
+        });
+
+        async function cargarProgreso() {
+            try {
+                const res = await fetch(`${API_BASE}/api/progreso`);
+                const data = await res.json();
+
+                // Nacional
+                document.getElementById('prog-nacional').style.width = data.nacional.porcentaje + '%';
+                document.getElementById('prog-nacional').textContent = data.nacional.porcentaje + '%';
+                document.getElementById('count-nacional').textContent = data.nacional.online.toLocaleString();
+                document.getElementById('total-nacional').textContent = data.nacional.total.toLocaleString();
+
+                // RM
+                document.getElementById('prog-rm').style.width = data.rm.porcentaje + '%';
+                document.getElementById('prog-rm').textContent = data.rm.porcentaje + '%';
+                document.getElementById('count-rm').textContent = data.rm.online.toLocaleString();
+                document.getElementById('total-rm').textContent = data.rm.total.toLocaleString();
+            } catch (e) {
+                console.error('Error cargando progreso:', e);
+            }
+        }
+
+        async function buscarAnioRbd() {
+            const anio = document.getElementById('bus-anio').value.trim();
+            const rbd = document.getElementById('bus-rbd').value.trim();
+
+            if (!anio || !rbd) {
+                mostrarError('Debe ingresar Año y RBD');
+                return;
+            }
+
+            mostrarCargando();
+            try {
+                const res = await fetch(`${API_BASE}/api/buscar/anio_rbd?anio=${encodeURIComponent(anio)}&rbd=${encodeURIComponent(rbd)}`);
+                const data = await res.json();
+                mostrarResultados(data.resultados, `Búsqueda específica: Año ${anio}, RBD ${rbd}`);
+            } catch (e) {
+                mostrarError('Error en la búsqueda: ' + e.message);
+            }
+        }
+
+        async function buscarNombre() {
+            const nombre = document.getElementById('bus-nombre').value.trim();
+
+            if (!nombre) {
+                mostrarError('Debe ingresar un nombre');
+                return;
+            }
+
+            mostrarCargando();
+            try {
+                const res = await fetch(`${API_BASE}/api/buscar/nombre?nombre=${encodeURIComponent(nombre)}&limite=1000`);
+                const data = await res.json();
+                mostrarResultados(data.resultados, `Búsqueda por nombre: "${nombre}"`);
+            } catch (e) {
+                mostrarError('Error en la búsqueda: ' + e.message);
+            }
+        }
+
+        function mostrarCargando() {
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('results-title').textContent = 'Buscando...';
+            document.getElementById('results-count').textContent = '';
+            document.getElementById('results-body').innerHTML = '<tr><td colspan="18" class="loading">⏳ Buscando...</td></tr>';
+            document.getElementById('results-error').innerHTML = '';
+        }
+
+        function mostrarError(msg) {
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('results-error').innerHTML = `<div class="error">⚠️ ${msg}</div>`;
+            document.getElementById('results-body').innerHTML = '';
+            document.getElementById('results-count').textContent = '0 resultados';
+        }
+
+        function mostrarResultados(rows, titulo) {
+            resultadosActuales = rows;
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('results-title').textContent = titulo;
+            document.getElementById('results-count').textContent = rows.length + ' resultado' + (rows.length !== 1 ? 's' : '');
+            document.getElementById('results-error').innerHTML = '';
+
+            const tbody = document.getElementById('results-body');
+            tbody.innerHTML = '';
+
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="18" class="no-results">No se encontraron resultados</td></tr>';
+                return;
+            }
+
+            rows.forEach((row, idx) => {
+                const tr = document.createElement('tr');
+                tr.dataset.idx = idx;
+
+                const estDigit = (row.est_digit || '').toString().trim().toUpperCase();
+                const isOnline = estDigit === 'ONLINE';
+                const badgeClass = isOnline ? 'online' : 'offline';
+                const badgeText = isOnline ? 'ONLINE' : (estDigit || '—');
+
+                const tieneUbicacion = row.ubicacion && row.ubicacion.toString().trim() !== '' && row.ubicacion.toString().trim() !== 'nan';
+
+                tr.innerHTML = `
+                    <td>${esc(row.anio)}</td>
+                    <td>${esc(row.rbd)}</td>
+                    <td>${esc(row.dgv)}</td>
+                    <td>${esc(row.nombre_establecimiento)}</td>
+                    <td>${esc(row.nombre_antiguo)}</td>
+                    <td>${esc(row.let_esta)}</td>
+                    <td>${esc(row.num_esta)}</td>
+                    <td>${esc(row.region)}</td>
+                    <td>${esc(row.nombre_comuna)}</td>
+                    <td>${esc(row.localidad)}</td>
+                    <td>${esc(row.ubicacion)}</td>
+                    <td>${esc(row.tomo)}</td>
+                    <td>${esc(row.microficha)}</td>
+                    <td>${esc(row.observacion)}</td>
+                    <td>${esc(row.direccion)}</td>
+                    <td>${esc(row.nombre_director)}</td>
+                    <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                    <td>
+                        ${isOnline ? `<button class="link-btn online" onclick="verOnline('${esc(row.anio)}', '${esc(row.rbd)}', event)">ONLINE</button>` : '<span style="color:#bdc3c7;font-size:0.8rem;">—</span>'}
+                        ${tieneUbicacion ? ` <button class="link-btn ubicacion" onclick="verUbicacion('${esc(row.ubicacion)}', event)">UBICACIÓN</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function esc(str) {
+            if (str === null || str === undefined) return '';
+            const s = String(str);
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        async function verUbicacion(codigo, event) {
+            if (event) event.stopPropagation();
+            const modal = document.getElementById('modal-ubicacion');
+            const body = document.getElementById('modal-ubicacion-body');
+            modal.classList.add('active');
+            body.innerHTML = '<div class="loading">⏳ Cargando ubicación...</div>';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/ubicacion/${encodeURIComponent(codigo)}`);
+                const data = await res.json();
+
+                if (data.error) {
+                    body.innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+
+                body.innerHTML = `
+                    <div class="ubicacion-info">
+                        <div class="info-card">
+                            <label>Código</label>
+                            <span>${esc(data.codigo)}</span>
+                        </div>
+                        <div class="info-card">
+                            <label>Piso</label>
+                            <span>${esc(data.piso)}</span>
+                        </div>
+                        <div class="info-card">
+                            <label>Rango</label>
+                            <span>${esc(data.rango)}</span>
+                        </div>
+                        <div class="info-card">
+                            <label>Descripción</label>
+                            <span>${esc(data.descripcion)}</span>
+                        </div>
+                    </div>
+                    <div style="margin-top:20px;">
+                        <h4 style="color:#1a5276;margin-bottom:10px;">Mapa de Ubicación (Piso ${esc(data.piso)})</h4>
+                        <div class="map-grid" id="map-grid"></div>
+                    </div>
+                `;
+
+                // Generar grid visual del mapa
+                const grid = document.getElementById('map-grid');
+                for (let i = 1; i <= 100; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'map-cell';
+                    cell.textContent = i;
+                    // Simular resaltado basado en el rango (simplificado)
+                    if (data.rango && data.rango.includes(String(i))) {
+                        cell.classList.add('highlight');
+                    }
+                    grid.appendChild(cell);
+                }
+            } catch (e) {
+                body.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+            }
+        }
+
+        async function verOnline(anio, rbd, event) {
+            if (event) event.stopPropagation();
+            const modal = document.getElementById('modal-online');
+            const body = document.getElementById('modal-online-body');
+            modal.classList.add('active');
+            body.innerHTML = '<div class="loading">⏳ Cargando actas digitalizadas...</div>';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/online/${encodeURIComponent(anio)}/${encodeURIComponent(rbd)}`);
+                const data = await res.json();
+
+                if (data.total === 0) {
+                    body.innerHTML = '<div class="no-results">No hay actas digitalizadas para este establecimiento y año.</div>';
+                    return;
+                }
+
+                let html = `
+                    <p style="margin-bottom:15px;color:#5d6d7e;font-size:0.9rem;">
+                        Mostrando <strong>${data.total}</strong> acta${data.total !== 1 ? 's' : ''} digitalizada${data.total !== 1 ? 's' : ''} 
+                        para Año <strong>${esc(anio)}</strong> / RBD <strong>${esc(rbd)}</strong>
+                    </p>
+                    <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Piso</th>
+                                <th>Sala</th>
+                                <th>Sector</th>
+                                <th>Modalidad</th>
+                                <th>Curso</th>
+                                <th>Letra</th>
+                                <th>Especialidad</th>
+                                <th>Conservación</th>
+                                <th>Enlace Acta</th>
+                                <th>Observación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.resultados.forEach(acta => {
+                    html += `
+                        <tr>
+                            <td>${esc(acta.piso)}</td>
+                            <td>${esc(acta.sala)}</td>
+                            <td>${esc(acta.sector)}</td>
+                            <td>${esc(acta.modalidad)}</td>
+                            <td>${esc(acta.curso)}</td>
+                            <td>${esc(acta.letra)}</td>
+                            <td>${esc(acta.especialidad)}</td>
+                            <td>${esc(acta.estado_conservacion)}</td>
+                            <td>
+                                ${acta.enlace_acta ? 
+                                    `<a href="${esc(acta.enlace_acta)}" target="_blank" class="link-btn online" style="text-decoration:none;">📄 Ver</a>` : 
+                                    '—'}
+                            </td>
+                            <td>${esc(acta.observacion)}</td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table></div>';
+                body.innerHTML = html;
+            } catch (e) {
+                body.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+            }
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function limpiarBusqueda() {
+            document.getElementById('bus-anio').value = '';
+            document.getElementById('bus-rbd').value = '';
+            document.getElementById('bus-nombre').value = '';
+            document.getElementById('results-section').style.display = 'none';
+            resultadosActuales = [];
+        }
+
+        // Cerrar modal al hacer clic fuera
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) overlay.classList.remove('active');
+            });
+        });
+
+        // Enter en inputs
+        document.getElementById('bus-anio').addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarAnioRbd(); });
+        document.getElementById('bus-rbd').addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarAnioRbd(); });
+        document.getElementById('bus-nombre').addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarNombre(); });
+    </script>
+</body>
+</html>
