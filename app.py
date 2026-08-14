@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from typing import Optional
 import uvicorn
 
 app = FastAPI(title="Directorio Histórico de Establecimientos")
@@ -15,7 +16,6 @@ def get_db():
     return conn
 
 def get_column_name(table, candidates):
-    """Encuentra el nombre real de una columna sin importar mayúsculas."""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(f'PRAGMA table_info("{table}");')
@@ -26,7 +26,6 @@ def get_column_name(table, candidates):
             return c
     return None
 
-# Detectar nombres de columnas al iniciar
 COL_ANIO = get_column_name("historico", ["anio", "año", "ano", "agno"])
 COL_RBD = get_column_name("historico", ["rbd"])
 COL_TOMO = get_column_name("historico", ["tomo", "TOMO", "Tomo", "caja_tomo"])
@@ -35,9 +34,8 @@ COL_NOMBRE = get_column_name("historico", ["nombre_establecimiento", "nombre", "
 COL_NOMBRE_ANT = get_column_name("historico", ["nombre_antiguo", "NOMBRE_ANTIGUO"])
 COL_COMUNA = get_column_name("historico", ["comuna", "COMUNA"])
 
-print(f"📊 Columnas detectadas: anio={COL_ANIO}, rbd={COL_RBD}, tomo={COL_TOMO}, region={COL_REGION}")
+print(f"📊 Columnas detectadas: anio={COL_ANIO}, rbd={COL_RBD}, tomo={COL_TOMO}, region={COL_REGION}, comuna={COL_COMUNA}")
 
-# Helper para escapar nombres de columnas en SQL
 def q(col):
     return f'"{col}"' if col else '"columna"'
 
@@ -56,7 +54,13 @@ def buscar_anio_rbd(anio: str = Query(...), rbd: str = Query(...)):
     return {"resultados": [dict(row) for row in rows], "total": len(rows)}
 
 @app.get("/api/buscar/nombre")
-def buscar_nombre(nombre: str = Query(...), limite: int = Query(1000)):
+def buscar_nombre(
+    nombre: str = Query(...),
+    limite: int = Query(1000),
+    region: Optional[str] = Query(None),
+    comuna: Optional[str] = Query(None),
+    anio: Optional[str] = Query(None)
+):
     conn = get_db()
     cursor = conn.cursor()
 
@@ -75,6 +79,18 @@ def buscar_nombre(nombre: str = Query(...), limite: int = Query(1000)):
         return {"resultados": [], "total": 0}
 
     where_clause = " OR ".join(conditions)
+
+    # Aplicar filtros adicionales
+    if region and COL_REGION:
+        where_clause = f"({where_clause}) AND {q(COL_REGION)} = ?"
+        params.append(region)
+    if comuna and COL_COMUNA:
+        where_clause = f"({where_clause}) AND {q(COL_COMUNA)} = ?"
+        params.append(comuna)
+    if anio and COL_ANIO:
+        where_clause = f"({where_clause}) AND {q(COL_ANIO)} = ?"
+        params.append(anio)
+
     order_by = f"ORDER BY {q(COL_NOMBRE)}" if COL_NOMBRE else ""
 
     cursor.execute(f"""
@@ -86,6 +102,29 @@ def buscar_nombre(nombre: str = Query(...), limite: int = Query(1000)):
     rows = cursor.fetchall()
     conn.close()
     return {"resultados": [dict(row) for row in rows], "total": len(rows)}
+
+@app.get("/api/filtros/valores")
+def filtros_valores():
+    """Devuelve los valores únicos de región, comuna y año para llenar los filtros."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    result = {"regiones": [], "comunas": [], "anios": []}
+
+    if COL_REGION:
+        cursor.execute(f"SELECT DISTINCT {q(COL_REGION)} FROM historico WHERE {q(COL_REGION)} IS NOT NULL AND {q(COL_REGION)} != '' ORDER BY {q(COL_REGION)}")
+        result["regiones"] = [r[0] for r in cursor.fetchall()]
+
+    if COL_COMUNA:
+        cursor.execute(f"SELECT DISTINCT {q(COL_COMUNA)} FROM historico WHERE {q(COL_COMUNA)} IS NOT NULL AND {q(COL_COMUNA)} != '' ORDER BY {q(COL_COMUNA)}")
+        result["comunas"] = [r[0] for r in cursor.fetchall()]
+
+    if COL_ANIO:
+        cursor.execute(f"SELECT DISTINCT {q(COL_ANIO)} FROM historico WHERE {q(COL_ANIO)} IS NOT NULL AND {q(COL_ANIO)} != '' ORDER BY {q(COL_ANIO)} DESC")
+        result["anios"] = [r[0] for r in cursor.fetchall()]
+
+    conn.close()
+    return result
 
 @app.get("/api/progreso")
 def progreso():
@@ -164,7 +203,6 @@ def get_establecimiento(rbd: str):
     conn.close()
     return {"resultados": [dict(row) for row in rows], "total": len(rows)}
 
-# Servir archivos estáticos
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
