@@ -96,17 +96,17 @@ def progreso():
     total_nacional = cursor.fetchone()[0]
 
     if COL_TOMO:
-        cursor.execute(f'SELECT COUNT(*) FROM historico WHERE {q(COL_TOMO)} IS NOT NULL AND {q(COL_TOMO)} != ''')
+        cursor.execute(f"SELECT COUNT(*) FROM historico WHERE {q(COL_TOMO)} IS NOT NULL AND {q(COL_TOMO)} != ''")
         online_nacional = cursor.fetchone()[0]
     else:
         online_nacional = 0
 
     if COL_REGION:
-        cursor.execute(f'SELECT COUNT(*) FROM historico WHERE {q(COL_REGION)} = '13'')
+        cursor.execute(f"SELECT COUNT(*) FROM historico WHERE {q(COL_REGION)} = '13'")
         total_rm = cursor.fetchone()[0]
 
         if COL_TOMO:
-            cursor.execute(f'SELECT COUNT(*) FROM historico WHERE {q(COL_REGION)} = '13' AND {q(COL_TOMO)} IS NOT NULL AND {q(COL_TOMO)} != ''')
+            cursor.execute(f"SELECT COUNT(*) FROM historico WHERE {q(COL_REGION)} = '13' AND {q(COL_TOMO)} IS NOT NULL AND {q(COL_TOMO)} != ''")
             online_rm = cursor.fetchone()[0]
         else:
             online_rm = 0
