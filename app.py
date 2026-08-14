@@ -14,14 +14,41 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+def get_column_name(table, candidates):
+    """Encuentra el nombre real de una columna sin importar mayúsculas."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(f'PRAGMA table_info("{table}");')
+    cols = [c[1] for c in cursor.fetchall()]
+    conn.close()
+    for c in cols:
+        if c.lower() in [x.lower() for x in candidates]:
+            return c
+    return None
+
+# Detectar nombres de columnas al iniciar
+COL_ANIO = get_column_name("historico", ["anio", "año", "ano", "agno"])
+COL_RBD = get_column_name("historico", ["rbd"])
+COL_TOMO = get_column_name("historico", ["tomo", "TOMO", "Tomo", "caja_tomo"])
+COL_REGION = get_column_name("historico", ["region", "REGION", "Region"])
+COL_NOMBRE = get_column_name("historico", ["nombre_establecimiento", "nombre", "nombre_de_establecimiento"])
+COL_NOMBRE_ANT = get_column_name("historico", ["nombre_antiguo", "NOMBRE_ANTIGUO"])
+COL_COMUNA = get_column_name("historico", ["comuna", "COMUNA"])
+
+print(f"📊 Columnas detectadas: anio={COL_ANIO}, rbd={COL_RBD}, tomo={COL_TOMO}, region={COL_REGION}")
+
+# Helper para escapar nombres de columnas en SQL
+def q(col):
+    return f'"{col}"' if col else '"columna"'
+
 @app.get("/api/buscar/anio_rbd")
 def buscar_anio_rbd(anio: str = Query(...), rbd: str = Query(...)):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
+    cursor.execute(f"""
         SELECT * FROM historico
-        WHERE anio = ? AND rbd = ?
-        ORDER BY anio DESC
+        WHERE {q(COL_ANIO)} = ? AND {q(COL_RBD)} = ?
+        ORDER BY {q(COL_ANIO)} DESC
         LIMIT 1000
     """, (anio, rbd))
     rows = cursor.fetchall()
@@ -32,13 +59,30 @@ def buscar_anio_rbd(anio: str = Query(...), rbd: str = Query(...)):
 def buscar_nombre(nombre: str = Query(...), limite: int = Query(1000)):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
+
+    conditions = []
+    params = []
+
+    if COL_NOMBRE:
+        conditions.append(f"{q(COL_NOMBRE)} LIKE ?")
+        params.append(f"%{nombre}%")
+    if COL_NOMBRE_ANT:
+        conditions.append(f"{q(COL_NOMBRE_ANT)} LIKE ?")
+        params.append(f"%{nombre}%")
+
+    if not conditions:
+        conn.close()
+        return {"resultados": [], "total": 0}
+
+    where_clause = " OR ".join(conditions)
+    order_by = f"ORDER BY {q(COL_NOMBRE)}" if COL_NOMBRE else ""
+
+    cursor.execute(f"""
         SELECT * FROM historico
-        WHERE nombre_establecimiento LIKE ?
-        OR nombre_antiguo LIKE ?
-        ORDER BY nombre_establecimiento
+        WHERE {where_clause}
+        {order_by}
         LIMIT ?
-    """, (f"%{nombre}%", f"%{nombre}%", limite))
+    """, (*params, limite))
     rows = cursor.fetchall()
     conn.close()
     return {"resultados": [dict(row) for row in rows], "total": len(rows)}
@@ -48,21 +92,27 @@ def progreso():
     conn = get_db()
     cursor = conn.cursor()
 
-    # Total nacional (todos los registros con año válido)
-    cursor.execute("SELECT COUNT(*) FROM historico WHERE anio IS NOT NULL AND anio != ''")
+    cursor.execute("SELECT COUNT(*) FROM historico")
     total_nacional = cursor.fetchone()[0]
 
-    # Nacional con tomo relleno (digitalizados)
-    cursor.execute("SELECT COUNT(*) FROM historico WHERE anio IS NOT NULL AND anio != '' AND tomo IS NOT NULL AND tomo != ''")
-    online_nacional = cursor.fetchone()[0]
+    if COL_TOMO:
+        cursor.execute(f'SELECT COUNT(*) FROM historico WHERE {q(COL_TOMO)} IS NOT NULL AND {q(COL_TOMO)} != ''')
+        online_nacional = cursor.fetchone()[0]
+    else:
+        online_nacional = 0
 
-    # RM (region 13)
-    cursor.execute("SELECT COUNT(*) FROM historico WHERE region = '13' AND anio IS NOT NULL AND anio != ''")
-    total_rm = cursor.fetchone()[0]
+    if COL_REGION:
+        cursor.execute(f'SELECT COUNT(*) FROM historico WHERE {q(COL_REGION)} = '13'')
+        total_rm = cursor.fetchone()[0]
 
-    # RM con tomo relleno
-    cursor.execute("SELECT COUNT(*) FROM historico WHERE region = '13' AND anio IS NOT NULL AND anio != '' AND tomo IS NOT NULL AND tomo != ''")
-    online_rm = cursor.fetchone()[0]
+        if COL_TOMO:
+            cursor.execute(f'SELECT COUNT(*) FROM historico WHERE {q(COL_REGION)} = '13' AND {q(COL_TOMO)} IS NOT NULL AND {q(COL_TOMO)} != ''')
+            online_rm = cursor.fetchone()[0]
+        else:
+            online_rm = 0
+    else:
+        total_rm = 0
+        online_rm = 0
 
     conn.close()
 
@@ -107,8 +157,8 @@ def get_online(anio: str, rbd: str):
 def get_establecimiento(rbd: str):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT * FROM historico WHERE rbd = ? ORDER BY anio DESC
+    cursor.execute(f"""
+        SELECT * FROM historico WHERE {q(COL_RBD)} = ? ORDER BY {q(COL_ANIO)} DESC
     """, (rbd,))
     rows = cursor.fetchall()
     conn.close()
