@@ -47,7 +47,7 @@ def buscar_anio_rbd(anio: str = Query(...), rbd: str = Query(...)):
         SELECT * FROM historico
         WHERE {q(COL_ANIO)} = ? AND {q(COL_RBD)} = ?
         ORDER BY {q(COL_ANIO)} DESC
-        LIMIT 1000
+        LIMIT 2000
     """, (anio, rbd))
     rows = cursor.fetchall()
     conn.close()
@@ -56,7 +56,7 @@ def buscar_anio_rbd(anio: str = Query(...), rbd: str = Query(...)):
 @app.get("/api/buscar/nombre")
 def buscar_nombre(
     nombre: str = Query(...),
-    limite: int = Query(1000),
+    limite: int = Query(2000),
     region: Optional[str] = Query(None),
     comuna: Optional[str] = Query(None),
     anio: Optional[str] = Query(None)
