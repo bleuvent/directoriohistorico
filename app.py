@@ -3,13 +3,10 @@ import os
 from fastapi import FastAPI, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
-from typing import List, Optional
 import uvicorn
 
 app = FastAPI(title="Directorio Histórico de Establecimientos")
 
-# Path a la base de datos
 DB_PATH = os.path.join(os.path.dirname(__file__), "directorio.db")
 
 def get_db():
@@ -22,7 +19,7 @@ def buscar_anio_rbd(anio: str = Query(...), rbd: str = Query(...)):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT * FROM historico 
+        SELECT * FROM historico
         WHERE anio = ? AND rbd = ?
         ORDER BY anio DESC
         LIMIT 1000
@@ -36,9 +33,9 @@ def buscar_nombre(nombre: str = Query(...), limite: int = Query(1000)):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT * FROM historico 
-        WHERE nombre_establecimiento LIKE ? 
-           OR nombre_antiguo LIKE ?
+        SELECT * FROM historico
+        WHERE nombre_establecimiento LIKE ?
+        OR nombre_antiguo LIKE ?
         ORDER BY nombre_establecimiento
         LIMIT ?
     """, (f"%{nombre}%", f"%{nombre}%", limite))
@@ -51,18 +48,20 @@ def progreso():
     conn = get_db()
     cursor = conn.cursor()
 
-    # Total nacional
+    # Total nacional (todos los registros con año válido)
     cursor.execute("SELECT COUNT(*) FROM historico WHERE anio IS NOT NULL AND anio != ''")
     total_nacional = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM historico WHERE est_digit = 'ONLINE'")
+    # Nacional con tomo relleno (digitalizados)
+    cursor.execute("SELECT COUNT(*) FROM historico WHERE anio IS NOT NULL AND anio != '' AND tomo IS NOT NULL AND tomo != ''")
     online_nacional = cursor.fetchone()[0]
 
     # RM (region 13)
     cursor.execute("SELECT COUNT(*) FROM historico WHERE region = '13' AND anio IS NOT NULL AND anio != ''")
     total_rm = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM historico WHERE region = '13' AND est_digit = 'ONLINE'")
+    # RM con tomo relleno
+    cursor.execute("SELECT COUNT(*) FROM historico WHERE region = '13' AND anio IS NOT NULL AND anio != '' AND tomo IS NOT NULL AND tomo != ''")
     online_rm = cursor.fetchone()[0]
 
     conn.close()
@@ -96,7 +95,7 @@ def get_online(anio: str, rbd: str):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT * FROM online 
+        SELECT * FROM online
         WHERE anio = ? AND rbd = ?
         ORDER BY curso, letra
     """, (anio, rbd))
