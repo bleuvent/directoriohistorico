@@ -33,10 +33,11 @@ COL_REGION = get_column_name("historico", ["region", "REGION", "Region"])
 COL_NOMBRE = get_column_name("historico", ["nombre_establecimiento", "nombre", "nombre_de_establecimiento"])
 COL_NOMBRE_ANT = get_column_name("historico", ["nombre_antiguo", "NOMBRE_ANTIGUO"])
 COL_COMUNA = get_column_name("historico", ["comuna", "COMUNA"])
-# Mapeo dinámico para la columna de observaciones en la tabla "historico"
-COL_OBSERVACIONES = get_column_name("historico", ["observaciones", "observacion", "OBSERVACIONES", "OBSERVACION", "obs"])
+COL_OBSERVACIONES_HIST = get_column_name("historico", ["observacion", "observación", "observaciones", "OBSERVACION", "OBSERVACIÓN", "OBSERVACIONES", "obs"])
+COL_OBSERVACIONES_ONLINE = get_column_name("online", ["observacion", "observación", "observaciones", "OBSERVACION", "OBSERVACIÓN", "OBSERVACIONES", "obs", "observaciones_acta"])
 
-print("Columnas: anio=" + str(COL_ANIO) + ", rbd=" + str(COL_RBD) + ", tomo=" + str(COL_TOMO) + ", region=" + str(COL_REGION) + ", comuna=" + str(COL_COMUNA) + ", obs=" + str(COL_OBSERVACIONES))
+print("Columnas historico: anio=" + str(COL_ANIO) + ", rbd=" + str(COL_RBD) + ", tomo=" + str(COL_TOMO) + ", obs=" + str(COL_OBSERVACIONES_HIST))
+print("Columnas online: obs=" + str(COL_OBSERVACIONES_ONLINE))
 
 def q(col):
     return '"' + col + '"' if col else '"columna"'
@@ -52,8 +53,8 @@ def buscar_anio_rbd(anio: str = Query(...), rbd: str = Query(...)):
     resultados = []
     for row in rows:
         d = dict(row)
-        if COL_OBSERVACIONES and COL_OBSERVACIONES in d:
-            d["observaciones"] = d[COL_OBSERVACIONES]
+        if COL_OBSERVACIONES_HIST and COL_OBSERVACIONES_HIST in d:
+            d["observaciones"] = d[COL_OBSERVACIONES_HIST]
         resultados.append(d)
         
     return {"resultados": resultados, "total": len(resultados)}
@@ -91,8 +92,8 @@ def buscar_nombre(nombre: str = Query(...), limite: int = Query(1000), region: O
     resultados = []
     for row in rows:
         d = dict(row)
-        if COL_OBSERVACIONES and COL_OBSERVACIONES in d:
-            d["observaciones"] = d[COL_OBSERVACIONES]
+        if COL_OBSERVACIONES_HIST and COL_OBSERVACIONES_HIST in d:
+            d["observaciones"] = d[COL_OBSERVACIONES_HIST]
         resultados.append(d)
 
     return {"resultados": resultados, "total": len(resultados)}
@@ -167,7 +168,15 @@ def get_online(anio: str, rbd: str):
         except ValueError:
             pass
     conn.close()
-    return {"resultados": [dict(row) for row in rows], "total": len(rows)}
+
+    resultados = []
+    for row in rows:
+        d = dict(row)
+        if COL_OBSERVACIONES_ONLINE and COL_OBSERVACIONES_ONLINE in d:
+            d["observaciones"] = d[COL_OBSERVACIONES_ONLINE]
+        resultados.append(d)
+
+    return {"resultados": resultados, "total": len(resultados)}
 
 @app.get("/api/establecimiento/{rbd}")
 def get_establecimiento(rbd: str):
