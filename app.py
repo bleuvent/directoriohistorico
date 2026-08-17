@@ -33,8 +33,10 @@ COL_REGION = get_column_name("historico", ["region", "REGION", "Region"])
 COL_NOMBRE = get_column_name("historico", ["nombre_establecimiento", "nombre", "nombre_de_establecimiento"])
 COL_NOMBRE_ANT = get_column_name("historico", ["nombre_antiguo", "NOMBRE_ANTIGUO"])
 COL_COMUNA = get_column_name("historico", ["comuna", "COMUNA"])
+# Mapeo dinámico para la columna de observaciones en la tabla "historico"
+COL_OBSERVACIONES = get_column_name("historico", ["observaciones", "observacion", "OBSERVACIONES", "OBSERVACION", "obs"])
 
-print("Columnas: anio=" + str(COL_ANIO) + ", rbd=" + str(COL_RBD) + ", tomo=" + str(COL_TOMO) + ", region=" + str(COL_REGION) + ", comuna=" + str(COL_COMUNA))
+print("Columnas: anio=" + str(COL_ANIO) + ", rbd=" + str(COL_RBD) + ", tomo=" + str(COL_TOMO) + ", region=" + str(COL_REGION) + ", comuna=" + str(COL_COMUNA) + ", obs=" + str(COL_OBSERVACIONES))
 
 def q(col):
     return '"' + col + '"' if col else '"columna"'
@@ -46,7 +48,15 @@ def buscar_anio_rbd(anio: str = Query(...), rbd: str = Query(...)):
     cursor.execute("SELECT * FROM historico WHERE " + q(COL_ANIO) + " = ? AND " + q(COL_RBD) + " = ? ORDER BY " + q(COL_ANIO) + " DESC LIMIT 1000", (anio, rbd))
     rows = cursor.fetchall()
     conn.close()
-    return {"resultados": [dict(row) for row in rows], "total": len(rows)}
+    
+    resultados = []
+    for row in rows:
+        d = dict(row)
+        if COL_OBSERVACIONES and COL_OBSERVACIONES in d:
+            d["observaciones"] = d[COL_OBSERVACIONES]
+        resultados.append(d)
+        
+    return {"resultados": resultados, "total": len(resultados)}
 
 @app.get("/api/buscar/nombre")
 def buscar_nombre(nombre: str = Query(...), limite: int = Query(1000), region: Optional[str] = Query(None), comuna: Optional[str] = Query(None), anio: Optional[str] = Query(None)):
@@ -77,7 +87,15 @@ def buscar_nombre(nombre: str = Query(...), limite: int = Query(1000), region: O
     cursor.execute("SELECT * FROM historico WHERE " + where_clause + " " + order_by + " LIMIT ?", (*params, limite))
     rows = cursor.fetchall()
     conn.close()
-    return {"resultados": [dict(row) for row in rows], "total": len(rows)}
+
+    resultados = []
+    for row in rows:
+        d = dict(row)
+        if COL_OBSERVACIONES and COL_OBSERVACIONES in d:
+            d["observaciones"] = d[COL_OBSERVACIONES]
+        resultados.append(d)
+
+    return {"resultados": resultados, "total": len(resultados)}
 
 @app.get("/api/filtros/valores")
 def filtros_valores():
@@ -138,10 +156,8 @@ def get_online(anio: str, rbd: str):
     cursor = conn.cursor()
     anio_str = str(anio).strip()
     rbd_str = str(rbd).strip()
-    # Comparacion flexible: intenta como texto primero
     cursor.execute("SELECT * FROM online WHERE CAST(anio AS TEXT) = ? AND CAST(rbd AS TEXT) = ? ORDER BY curso, letra", (anio_str, rbd_str))
     rows = cursor.fetchall()
-    # Si no encuentra, intenta como numero entero
     if len(rows) == 0:
         try:
             anio_num = int(anio_str)
