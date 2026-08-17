@@ -106,6 +106,7 @@
         .acta-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: var(--bg); border-radius: 8px; flex-wrap: wrap; gap: 8px; }
         .acta-item .codigo { font-weight: 700; color: var(--primary); font-size: 1.1rem; font-family: monospace; }
         .acta-item .detalle { color: var(--text-muted); font-size: 0.85rem; }
+        .acta-item .obs-pop { width: 100%; color: #d97706; font-size: 0.8rem; margin-top: 4px; font-style: italic; }
         .acta-item a { color: var(--primary); text-decoration: none; font-weight: 500; }
         .acta-item a:hover { text-decoration: underline; }
         .no-link { color: var(--text-muted); font-size: 0.85rem; }
@@ -302,7 +303,6 @@
             document.getElementById('filtro-comuna').value = '';
             document.getElementById('filtro-anio').value = '';
             filtrosActivos = { region: '', comuna: '', anio: '' };
-            // Si hay una búsqueda previa por nombre, re-ejecutarla
             if (ultimaBusqueda.tipo === 'nombre' && ultimaBusqueda.valor) {
                 document.getElementById('nombre').value = ultimaBusqueda.valor;
                 buscarNombre(new Event('submit'));
@@ -326,6 +326,8 @@
             const rows = resultados.map(r => {
                 const tieneTomo = r.tomo && r.tomo.toString().trim() !== '';
                 const tag = tieneTomo ? '<span class="tag tag-online">CON TOMO</span>' : '<span class="tag tag-offline">SIN TOMO</span>';
+                const obs = r.observaciones || r.observacion || r.OBSERVACIONES || '-';
+
                 return `<tr>
                     <td>${r.anio || '-'}</td>
                     <td>${r.rbd || '-'}</td>
@@ -334,6 +336,7 @@
                     <td>${r.region || '-'}</td>
                     <td>${r.comuna || '-'}</td>
                     <td>${r.tomo || '-'}</td>
+                    <td>${obs}</td>
                     <td>${tag}</td>
                     <td><button class="btn-small btn-online" onclick="verActas('${r.anio}', '${r.rbd}')">Ver Actas</button></td>
                 </tr>`;
@@ -355,6 +358,7 @@
                                 <th>Región</th>
                                 <th>Comuna</th>
                                 <th>Tomo</th>
+                                <th>Observaciones</th>
                                 <th>Estado</th>
                                 <th>Acción</th>
                             </tr>
@@ -422,6 +426,8 @@
                     const letra = r.letra || '';
                     const especialidad = r.tipo_acta || '';
                     const detalle = `${curso} ${letra} · ${especialidad}`.trim();
+                    const obsModal = r.observaciones || r.observacion || r.OBSERVACIONES || '';
+                    const htmlObs = obsModal ? `<div class="obs-pop">📌 Observaciones: ${obsModal}</div>` : '';
 
                     const url = r.url_sharepoint;
                     const tieneUrl = url && url.toString().startsWith('http');
@@ -431,6 +437,7 @@
                             <div>
                                 <span class="codigo">${codigo}</span>
                                 <span class="detalle"> · ${detalle}</span>
+                                ${htmlObs}
                             </div>
                             <a href="${url}" target="_blank" rel="noopener noreferrer">Abrir en SharePoint ↗</a>
                         </div>`;
@@ -439,6 +446,7 @@
                             <div>
                                 <span class="codigo">${codigo}</span>
                                 <span class="detalle"> · ${detalle}</span>
+                                ${htmlObs}
                             </div>
                             <span class="no-link">Sin enlace digital</span>
                         </div>`;
