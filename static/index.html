@@ -103,10 +103,10 @@
         .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
         .modal-body { padding: 25px; }
         .actas-list { display: flex; flex-direction: column; gap: 10px; }
-        .acta-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: var(--bg); border-radius: 8px; flex-wrap: wrap; gap: 8px; }
+        .acta-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 15px; background: var(--bg); border-radius: 8px; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); }
         .acta-item .codigo { font-weight: 700; color: var(--primary); font-size: 1.1rem; font-family: monospace; }
         .acta-item .detalle { color: var(--text-muted); font-size: 0.85rem; }
-        .acta-item .obs-pop { width: 100%; color: #d97706; font-size: 0.8rem; margin-top: 4px; font-style: italic; }
+        .acta-item .obs-pop { width: 100%; color: #d97706; font-size: 0.85rem; margin-top: 4px; font-style: italic; }
         .acta-item a { color: var(--primary); text-decoration: none; font-weight: 500; }
         .acta-item a:hover { text-decoration: underline; }
         .no-link { color: var(--text-muted); font-size: 0.85rem; }
@@ -228,7 +228,6 @@
         let filtrosActivos = { region: '', comuna: '', anio: '' };
         let ultimaBusqueda = { tipo: '', valor: '' };
 
-        // Cargar progreso al iniciar
         async function cargarProgreso() {
             try {
                 const res = await fetch(`${API}/api/progreso`);
@@ -249,7 +248,6 @@
         }
         cargarProgreso();
 
-        // Cargar valores de filtros al iniciar
         async function cargarFiltros() {
             try {
                 const res = await fetch(`${API}/api/filtros/valores`);
@@ -326,7 +324,7 @@
             const rows = resultados.map(r => {
                 const tieneTomo = r.tomo && r.tomo.toString().trim() !== '';
                 const tag = tieneTomo ? '<span class="tag tag-online">CON TOMO</span>' : '<span class="tag tag-offline">SIN TOMO</span>';
-                const obs = r.observaciones || r.observacion || r.OBSERVACIONES || '-';
+                const obs = r.observaciones || r["observación"] || r.observacion || r.OBSERVACIONES || r["OBSERVACIÓN"] || r.OBSERVACION || r.obs || '-';
 
                 return `<tr>
                     <td>${r.anio || '-'}</td>
@@ -426,31 +424,30 @@
                     const letra = r.letra || '';
                     const especialidad = r.tipo_acta || '';
                     const detalle = `${curso} ${letra} · ${especialidad}`.trim();
-                    const obsModal = r.observaciones || r.observacion || r.OBSERVACIONES || '';
-                    const htmlObs = obsModal ? `<div class="obs-pop">📌 Observaciones: ${obsModal}</div>` : '';
+                    
+                    const obsTexto = r.observaciones || r["observación"] || r.observacion || r.OBSERVACIONES || r["OBSERVACIÓN"] || r.OBSERVACION || r.obs || '';
+                    const htmlObs = (obsTexto && obsTexto.toString().trim() !== '') 
+                        ? `<div class="obs-pop">📌 Observaciones: ${obsTexto}</div>` 
+                        : '';
 
                     const url = r.url_sharepoint;
                     const tieneUrl = url && url.toString().startsWith('http');
 
-                    if (tieneUrl) {
-                        return `<div class="acta-item">
+                    return `<div class="acta-item">
+                        <div style="flex: 1;">
                             <div>
                                 <span class="codigo">${codigo}</span>
                                 <span class="detalle"> · ${detalle}</span>
-                                ${htmlObs}
                             </div>
-                            <a href="${url}" target="_blank" rel="noopener noreferrer">Abrir en SharePoint ↗</a>
-                        </div>`;
-                    } else {
-                        return `<div class="acta-item">
-                            <div>
-                                <span class="codigo">${codigo}</span>
-                                <span class="detalle"> · ${detalle}</span>
-                                ${htmlObs}
-                            </div>
-                            <span class="no-link">Sin enlace digital</span>
-                        </div>`;
-                    }
+                            ${htmlObs}
+                        </div>
+                        <div>
+                            ${tieneUrl 
+                                ? `<a href="${url}" target="_blank" rel="noopener noreferrer">Abrir en SharePoint ↗</a>` 
+                                : `<span class="no-link">Sin enlace digital</span>`
+                            }
+                        </div>
+                    </div>`;
                 }).join('');
 
                 body.innerHTML = `<div class="actas-list">${items}</div>`;
