@@ -405,6 +405,27 @@
             }
         }
 
+        // NUEVO: Función que busca URL en cualquier campo del registro
+        function extraerUrl(registro) {
+            // 1. Buscar en columnas comunes (incluyendo la que el backend normalizó)
+            const camposUrl = ['url_sharepoint', 'enlace', 'link', 'url', 'URL', 'Enlace', 'LINK', 'sharepoint', 'SHAREPOINT'];
+            for (let campo of camposUrl) {
+                if (registro[campo]) {
+                    const val = registro[campo].toString().trim();
+                    if (val.startsWith('http')) return val;
+                }
+            }
+            // 2. Buscar en CUALQUIER campo que empiece con http (por si la columna tiene otro nombre)
+            for (let key in registro) {
+                const val = registro[key];
+                if (val && typeof val === 'string') {
+                    const trimmed = val.trim();
+                    if (trimmed.startsWith('http')) return trimmed;
+                }
+            }
+            return null;
+        }
+
         async function verActas(anio, rbd) {
             const body = document.getElementById('actas-body');
             body.innerHTML = '<div class="loading">Cargando actas...</div>';
@@ -419,29 +440,30 @@
                 }
 
                 const items = data.resultados.map(r => {
-                    const codigo = r.enlace || 'Sin código';
+                    const codigo = r.enlace || r.codigo || r.id || 'Sin código';
                     const curso = r.curso || '';
                     const letra = r.letra || '';
-                    const especialidad = r.tipo_acta || '';
-                    const detalle = `${curso} ${letra} · ${especialidad}`.trim();
+                    const especialidad = r.tipo_acta || r.especialidad || '';
+                    const detalle = `${curso} ${letra} · ${especialidad}`.trim().replace(/^·\s*|·\s*$/g, '');
                     
                     const obsTexto = r.observaciones || r["observación"] || r.observacion || r.OBSERVACIONES || r["OBSERVACIÓN"] || r.OBSERVACION || r.obs || '';
                     const htmlObs = (obsTexto && obsTexto.toString().trim() !== '') 
                         ? `<div class="obs-pop">📌 Observaciones: ${obsTexto}</div>` 
                         : '';
 
-                    const url = r.url_sharepoint;
-                    const tieneUrl = url && url.toString().startsWith('http');
+                    // Extraer URL de cualquier campo (texto plano o enlace real)
+                    const url = extraerUrl(r);
+                    const tieneUrl = !!url;
 
                     return `<div class="acta-item">
-                        <div style="flex: 1;">
+                        <div style="flex: 1; min-width: 0;">
                             <div>
                                 <span class="codigo">${codigo}</span>
-                                <span class="detalle"> · ${detalle}</span>
+                                ${detalle ? `<span class="detalle"> · ${detalle}</span>` : ''}
                             </div>
                             ${htmlObs}
                         </div>
-                        <div>
+                        <div style="white-space: nowrap;">
                             ${tieneUrl 
                                 ? `<a href="${url}" target="_blank" rel="noopener noreferrer">Abrir en SharePoint ↗</a>` 
                                 : `<span class="no-link">Sin enlace digital</span>`
@@ -452,6 +474,7 @@
 
                 body.innerHTML = `<div class="actas-list">${items}</div>`;
             } catch (e) {
+                console.error(e);
                 body.innerHTML = '<div class="empty">Error cargando actas.</div>';
             }
         }
