@@ -36,8 +36,14 @@ COL_COMUNA = get_column_name("historico", ["comuna", "COMUNA"])
 COL_OBSERVACIONES_HIST = get_column_name("historico", ["observacion", "observación", "observaciones", "OBSERVACION", "OBSERVACIÓN", "OBSERVACIONES", "obs"])
 COL_OBSERVACIONES_ONLINE = get_column_name("online", ["observacion", "observación", "observaciones", "OBSERVACION", "OBSERVACIÓN", "OBSERVACIONES", "obs", "observaciones_acta"])
 
+# NUEVO: Detectar columna de URL automáticamente
+COL_URL = get_column_name("online", [
+    "url_sharepoint", "enlace", "link", "url", "URL", 
+    "Enlace", "LINK", "sharepoint", "SHAREPOINT"
+])
+
 print("Columnas historico: anio=" + str(COL_ANIO) + ", rbd=" + str(COL_RBD) + ", tomo=" + str(COL_TOMO) + ", obs=" + str(COL_OBSERVACIONES_HIST))
-print("Columnas online: obs=" + str(COL_OBSERVACIONES_ONLINE))
+print("Columnas online: obs=" + str(COL_OBSERVACIONES_ONLINE) + ", url=" + str(COL_URL))
 
 def q(col):
     return '"' + col + '"' if col else '"columna"'
@@ -174,6 +180,9 @@ def get_online(anio: str, rbd: str):
         d = dict(row)
         if COL_OBSERVACIONES_ONLINE and COL_OBSERVACIONES_ONLINE in d:
             d["observaciones"] = d[COL_OBSERVACIONES_ONLINE]
+        # NUEVO: Agregar la URL detectada automáticamente
+        if COL_URL and COL_URL in d:
+            d["url_sharepoint"] = d[COL_URL]
         resultados.append(d)
 
     return {"resultados": resultados, "total": len(resultados)}
