@@ -33,17 +33,8 @@ COL_REGION = get_column_name("historico", ["region", "REGION", "Region"])
 COL_NOMBRE = get_column_name("historico", ["nombre_establecimiento", "nombre", "nombre_de_establecimiento"])
 COL_NOMBRE_ANT = get_column_name("historico", ["nombre_antiguo", "NOMBRE_ANTIGUO"])
 COL_COMUNA = get_column_name("historico", ["comuna", "COMUNA"])
-COL_OBSERVACIONES_HIST = get_column_name("historico", ["observacion", "observación", "observaciones", "OBSERVACION", "OBSERVACIÓN", "OBSERVACIONES", "obs"])
-COL_OBSERVACIONES_ONLINE = get_column_name("online", ["observacion", "observación", "observaciones", "OBSERVACION", "OBSERVACIÓN", "OBSERVACIONES", "obs", "observaciones_acta"])
 
-# NUEVO: Detectar columna de URL automáticamente
-COL_URL = get_column_name("online", [
-    "url_sharepoint", "enlace", "link", "url", "URL", 
-    "Enlace", "LINK", "sharepoint", "SHAREPOINT"
-])
-
-print("Columnas historico: anio=" + str(COL_ANIO) + ", rbd=" + str(COL_RBD) + ", tomo=" + str(COL_TOMO) + ", obs=" + str(COL_OBSERVACIONES_HIST))
-print("Columnas online: obs=" + str(COL_OBSERVACIONES_ONLINE) + ", url=" + str(COL_URL))
+print("Columnas: anio=" + str(COL_ANIO) + ", rbd=" + str(COL_RBD) + ", tomo=" + str(COL_TOMO) + ", region=" + str(COL_REGION) + ", comuna=" + str(COL_COMUNA))
 
 def q(col):
     return '"' + col + '"' if col else '"columna"'
@@ -55,15 +46,7 @@ def buscar_anio_rbd(anio: str = Query(...), rbd: str = Query(...)):
     cursor.execute("SELECT * FROM historico WHERE " + q(COL_ANIO) + " = ? AND " + q(COL_RBD) + " = ? ORDER BY " + q(COL_ANIO) + " DESC LIMIT 1000", (anio, rbd))
     rows = cursor.fetchall()
     conn.close()
-    
-    resultados = []
-    for row in rows:
-        d = dict(row)
-        if COL_OBSERVACIONES_HIST and COL_OBSERVACIONES_HIST in d:
-            d["observaciones"] = d[COL_OBSERVACIONES_HIST]
-        resultados.append(d)
-        
-    return {"resultados": resultados, "total": len(resultados)}
+    return {"resultados": [dict(row) for row in rows], "total": len(rows)}
 
 @app.get("/api/buscar/nombre")
 def buscar_nombre(nombre: str = Query(...), limite: int = Query(1000), region: Optional[str] = Query(None), comuna: Optional[str] = Query(None), anio: Optional[str] = Query(None)):
@@ -94,15 +77,7 @@ def buscar_nombre(nombre: str = Query(...), limite: int = Query(1000), region: O
     cursor.execute("SELECT * FROM historico WHERE " + where_clause + " " + order_by + " LIMIT ?", (*params, limite))
     rows = cursor.fetchall()
     conn.close()
-
-    resultados = []
-    for row in rows:
-        d = dict(row)
-        if COL_OBSERVACIONES_HIST and COL_OBSERVACIONES_HIST in d:
-            d["observaciones"] = d[COL_OBSERVACIONES_HIST]
-        resultados.append(d)
-
-    return {"resultados": resultados, "total": len(resultados)}
+    return {"resultados": [dict(row) for row in rows], "total": len(rows)}
 
 @app.get("/api/filtros/valores")
 def filtros_valores():
@@ -163,8 +138,10 @@ def get_online(anio: str, rbd: str):
     cursor = conn.cursor()
     anio_str = str(anio).strip()
     rbd_str = str(rbd).strip()
+    # Comparacion flexible: intenta como texto primero
     cursor.execute("SELECT * FROM online WHERE CAST(anio AS TEXT) = ? AND CAST(rbd AS TEXT) = ? ORDER BY curso, letra", (anio_str, rbd_str))
     rows = cursor.fetchall()
+    # Si no encuentra, intenta como numero entero
     if len(rows) == 0:
         try:
             anio_num = int(anio_str)
@@ -174,18 +151,7 @@ def get_online(anio: str, rbd: str):
         except ValueError:
             pass
     conn.close()
-
-    resultados = []
-    for row in rows:
-        d = dict(row)
-        if COL_OBSERVACIONES_ONLINE and COL_OBSERVACIONES_ONLINE in d:
-            d["observaciones"] = d[COL_OBSERVACIONES_ONLINE]
-        # NUEVO: Agregar la URL detectada automáticamente
-        if COL_URL and COL_URL in d:
-            d["url_sharepoint"] = d[COL_URL]
-        resultados.append(d)
-
-    return {"resultados": resultados, "total": len(resultados)}
+    return {"resultados": [dict(row) for row in rows], "total": len(rows)}
 
 @app.get("/api/establecimiento/{rbd}")
 def get_establecimiento(rbd: str):
